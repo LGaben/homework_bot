@@ -103,8 +103,8 @@ def parse_status(homework: dict) -> str:
         raise KeyError('отсутствует homework_name')
     homework_name: str = homework['homework_name']
     if (
-        (homework['status'] is None) or
-        (homework['status'] not in HOMEWORK_VERDICTS)
+        (homework['status'] is None)
+        or (homework['status'] not in HOMEWORK_VERDICTS)
     ):
         logger.info('Ключ статуса не отвечает стандарту')
         raise KeyError('Ключ статуса не отвечает стандарту')
