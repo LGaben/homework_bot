@@ -119,7 +119,7 @@ def main() -> None:
     """Основная логика работы бота."""
     check_tokens()
     bot: Bot = Bot(token=TELEGRAM_TOKEN)
-    timestamp: int = 0
+    timestamp: int = int(time.time())
     while True:
         try:
             response: dict = get_api_answer(timestamp)
