@@ -123,7 +123,6 @@ def main() -> None:
     while True:
         try:
             response: dict = get_api_answer(timestamp)
-            timestamp: int = response['current_date']
             homework: dict = check_response(response)
             if homework:
                 message: str = parse_status(homework[0])
@@ -134,6 +133,7 @@ def main() -> None:
             logger.error(f'Сбой в работе программы: {error}', exc_info=True)
         finally:
             time.sleep(RETRY_PERIOD)
+            timestamp: int = (response['current_date'] - RETRY_PERIOD)
 
 
 if __name__ == '__main__':
