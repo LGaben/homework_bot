@@ -9,6 +9,7 @@ import logging
 import os
 from http import HTTPStatus
 import time
+import errors
 
 import requests
 from telegram import Bot, TelegramError
@@ -24,7 +25,7 @@ TELEGRAM_CHAT_ID: str = os.getenv('CHAT_ID')
 RETRY_PERIOD: int = 600
 ENDPOINT: str = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS: str = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
-
+ERROR_POINTER: int = 0
 
 HOMEWORK_VERDICTS: dict = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
@@ -51,11 +52,13 @@ def check_tokens() -> None:
 
 def send_message(bot: Bot, message: str) -> None:
     """Отправляет сообщение в Telegram чат."""
+    global ERROR_POINTER
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logger.debug(f'Сообщение успешно отправленно: {message}')
-    except TelegramError as error:
-        raise error(f'Сообщение не отправленно: {error}')
+    except errors.SendMessageError as error:
+        ERROR_POINTER = 1
+        raise error(f'Ошибка отправкисообщения: {error}')
 
 
 def get_api_answer(timestamp: int) -> dict:
@@ -67,15 +70,15 @@ def get_api_answer(timestamp: int) -> dict:
             headers=HEADERS,
             params=payload
         )
-    except requests.exceptions.RequestException as e:
+    except requests.RequestException as e:
         raise e(
             f'Ошибка при запросе к основному API: {e}'
             f'Url: {ENDPOINT}'
             f'Headers: {HEADERS}'
         )
     if response.status_code != HTTPStatus.OK:
-        raise requests.exceptions.HTTPError(
-            f'Ошибка {response.status_code}'
+        raise errors.ResponseStatusCode(
+            f'Статус-код: {response.status_code}'
             f'Url: {ENDPOINT}'
             f'Headers: {HEADERS}'
         )
@@ -120,6 +123,7 @@ def main() -> None:
     check_tokens()
     bot: Bot = Bot(token=TELEGRAM_TOKEN)
     timestamp: int = int(time.time())
+    global ERROR_POINTER
     while True:
         try:
             response: dict = get_api_answer(timestamp)
@@ -127,13 +131,19 @@ def main() -> None:
             if homework:
                 message: str = parse_status(homework[0])
                 send_message(bot, message)
+                timestamp: int = (response['current_date'])
             else:
                 logger.info('homework пуст')
+            if ERROR_POINTER != 0:
+                ERROR_POINTER = 0
         except Exception as error:
-            logger.error(f'Сбой в работе программы: {error}', exc_info=True)
+            ERROR_POINTER += 1
+            message = f'Сбой в работе программы: {error}'
+            if ERROR_POINTER == 2:
+                send_message(bot, message)
+            logger.error(message, exc_info=True)
         finally:
             time.sleep(RETRY_PERIOD)
-            timestamp: int = (response['current_date'] - RETRY_PERIOD)
 
 
 if __name__ == '__main__':
