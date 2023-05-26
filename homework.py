@@ -12,7 +12,7 @@ import time
 import errors
 
 import requests
-from telegram import Bot, TelegramError
+from telegram import Bot
 from dotenv import load_dotenv
 
 load_dotenv()
